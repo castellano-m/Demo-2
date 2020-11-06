@@ -95,8 +95,8 @@ double rkPropRot     = .5; double rkIntegRot    = 0.3;            // right motor
 double lkPropRot     = .5; double lkIntegRot    = 0.3;            // left motor gain values for rotational movement
 double rotK[4] = {lkPropRot, lkIntegRot, rkPropRot, rkIntegRot};  // array to hold the rotational PI control gain values
 
-double rkPropVel     = .5; double rkIntegVel    = 0.3;            // right motor gain values for rotational movement
-double lkPropVel     = .5; double lkIntegVel    = 0.3;            // left motor gain values for rotational movement
+double rkPropVel     = 0.444; double rkIntegVel    = 2.220;       // right motor gain values for rotational movement
+double lkPropVel     = 0.468; double lkIntegVel    = 3.118;       // left motor gain values for rotational movement
 double velK[4] = {lkPropVel, lkIntegVel, rkPropVel, rkIntegVel};  // array to hold the rotational PI control gain values
 
 

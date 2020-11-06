@@ -83,12 +83,12 @@ static double        J_rotVel = 0.0;              // [rad/s] rotational velocity
 */
 
 /* CONTROLS */
-double rkProp       = 0.9335;    // right motor proportional gain
-double rkInteg      = 0.0;      // right motor integral gain
+double rkProp       = 0.8835;    // right motor proportional gain
+double rkInteg      = 0.05;      // right motor integral gain
 double rErrorRange  = PI / 8;   // right motor error range
 
-double lkProp       = 1.1;     // left motor proportional gain
-double lkInteg      = 0.0;     // left motor integral gain
+double lkProp       = .97;     // left motor proportional gain
+double lkInteg      = 0.06;     // left motor integral gain
 double lErrorRange  = PI / 8;  // left motor error range
 
 double rkPropRot     = .5; double rkIntegRot    = 0.3;            // right motor gain values for rotational movement
@@ -320,7 +320,7 @@ void velController(double leftDesiredVel, double rightDesiredVel, double leftAng
 
 void receiveData(int byteCount){
   while(Wire.available()){
-    desiredXPos = Wire.read();
+    desiredXPos = Wire.read();    // receiving an int that needs to be converted to decimal
   }
   desiredCounts = (desiredXPos / (2 * PI*radius)) * N;
   desireForwardAngPos = (double)desiredCounts * 2.0 * PI / (double)N;
@@ -375,6 +375,7 @@ void printData() {
   //Serial.print("\t"); Serial.print(desireForwardAngPos);
   //Serial.print("\t"); Serial.print(x_now);
   Serial.print("\t"); Serial.print(desiredXPos);
+  Serial.print("\t"); Serial.print(phi_now);
   //Serial.print("\t"); Serial.print(rightrotError);
   //Serial.print("\t"); Serial.print(rotFlag);
   //Serial.print("\t"); Serial.print(R_angVel);

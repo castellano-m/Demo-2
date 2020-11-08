@@ -90,6 +90,7 @@ double rErrorRange  = PI / 8;   // right motor error range
 double lkProp       = .97;     // left motor proportional gain
 double lkInteg      = 0.06;     // left motor integral gain
 double lErrorRange  = PI / 8;  // left motor error range
+double linK[4] = {lkProp, lkInteg, rkProp, rkInteg};         // array of gain values for forward control
 
 double rkPropRot     = .5; double rkIntegRot    = 0.3;            // right motor gain values for rotational movement
 double lkPropRot     = .5; double lkIntegRot    = 0.3;            // left motor gain values for rotational movement
@@ -99,6 +100,10 @@ double rkPropVel     = 0.444; double rkIntegVel    = 2.220;       // right motor
 double lkPropVel     = 0.468; double lkIntegVel    = 3.118;       // left motor gain values for rotational movement
 double velK[4] = {lkPropVel, lkIntegVel, rkPropVel, rkIntegVel};  // array to hold the rotational PI control gain values
 
+bool L_velDir = 0;
+bool R_velDir = 0;
+bool L_linDir = 0;
+bool R_linDir = 0;
 
 /***************************************** MEASUREMENTS *****************************************/
 const double  radius    = 2.952;        // [in]  radius of wheels
@@ -108,9 +113,16 @@ const double  baseline  = 10.827;       // [in]  width of robot
 double desiredXPos      = 0;           // [in]
 double phi_des          = 0;           // [rad]
 
-double leftDesAngVel    = 0;           // [rad/s]
-double rightDesAngVel   = 0;           // [rad/s]
-double circleTime       = 5000;        // [s]
+double leftDesAngVel    = 11;           // [rad/s]
+double rightDesAngVel   = 0.525*leftDesAngVel;           // [rad/s]
+double circleTime       = 3000;        // [s]
+
+bool   pauseRot         = false;       // pause robot initial rotation
+double leftInitialRot   = -0.5;        // [rad/s]
+double rightInitialRot  = 0.5;         // [rad/s]
+
+int isrData[4] = {0};
+
 
 /********************************* CALCULATIONS FROM DEMO VARIABLES *****************************/
 int    desiredCounts            = (desiredXPos / (2 * PI*radius)) * N;            // encoder counts based off distance to move in inches
@@ -128,7 +140,7 @@ static double lVelErrorInteg       = 0;                // aggregate error (desir
 bool   rotFlag                  = true;                // flag to indicate when to switch from rotational to forward control
 int    numRotFlag               = 0;                   // count of how many times the flag was set true
 
-bool   circFlag                 = false;               // flag to indicate when to switch to circular control
+bool   circFlag                 = true;               // flag to indicate when to switch to circular control
 
 /************************************** FUNCTION PROTOTYPES **************************************/
 void motorPiController(double leftDesiredAng, double rightDesiredAng, double leftAngNow, double rightAngNow, double gainArr[4]);    // main motor PI controller
@@ -196,9 +208,8 @@ void loop() {
 
 
   /* implement PI controller */
-  if ((rotFlag == false) && (circFlag == false)) {                                     // if robot has been rotated to correct angle
-    double K[4] = {lkProp, lkInteg, rkProp, rkInteg};         // array of gain values for forward control
-    motorPiController(desireForwardAngPos, desireForwardAngPos, L_angPosNow, R_angPosNow, K);
+  /*if ((rotFlag == false) && (circFlag == false)) {                                     // if robot has been rotated to correct angle
+    motorPiController(desireForwardAngPos, desireForwardAngPos, L_angPosNow, R_angPosNow, linK);
   } else if((rotFlag == true) && (circFlag == false)){                                                  // else
     rotPiController(desireRotatAngPos, R_angPosNow, L_angPosNow, rotK);       // rotate robot to correct angle
   } else if((rotFlag == false) && (circFlag == true)){
@@ -207,10 +218,31 @@ void loop() {
     if((circleTime + circleDriveStart) > millis()){
       circFlag = false;                                                       // reset circFlag when time is up
     }
-  } else {
+  /*} else {
     analogWrite(L_PWM, 0);    // send left motor PWM signal
     analogWrite(R_PWM, 0);    // send left motor PWM signal
+  }/*/
+  /*if(pauseRot){
+    velController(0, 0, L_angVel, R_angVel, velK);
+  }else{
+    velController(leftInitialRot, rightInitialRot, L_angVel, R_angVel, velK);
+  }*/
+
+  if((millis() >= 1000) && (millis() <= 4600)){
+    velController(leftDesAngVel, rightDesAngVel, L_angVel, R_angVel,velK);
+  } else {
+    velController(0, 0, L_angVel, R_angVel,velK);
   }
+
+  desiredXPos = isrData[1];
+  if(isrData[3] == 0){
+    phi_des = (double)isrData[2]/(double)100;
+  }else{
+    phi_des = -(double)isrData[2]/(double)100;
+  }
+  desiredCounts = (desiredXPos / (2 * PI*radius)) * N;
+  desireForwardAngPos = (double)desiredCounts * 2.0 * PI / (double)N;
+  
 
   /* set previous values to current values */
   x_prev = x_now; y_prev = y_now; phi_prev = phi_now;
@@ -252,25 +284,22 @@ void motorPiController(double leftDesiredAng, double rightDesiredAng, double lef
     rightMotorVoltage = -(double)batteryVoltage;
 
   double rightDutyCycle = ((abs(rightMotorVoltage) / batteryVoltage)) * (double)255;                        // convert right motor voltage to PWM input
-
-  bool L_dir;
-  bool R_dir;
   
   if (leftMotorVoltage < 0) {   // check for left wheel spin direction
-    L_dir = 1;
+    L_linDir = 1;
   } else {
-    L_dir = 0;
+    L_linDir = 0;
   }
 
   if (rightMotorVoltage < 0) {  // check for right wheel spin direction
-    R_dir = 1;
+    R_linDir = 1;
   } else {
-    R_dir = 0;
+    R_linDir = 0;
   }
 
-  digitalWrite(L_SIGN, L_dir);          // assign left motor direction
+  digitalWrite(L_SIGN, L_linDir);          // assign left motor direction
   analogWrite(L_PWM, leftDutyCycle);    // send left motor PWM signal
-  digitalWrite(R_SIGN, R_dir);          // assign left motor direction
+  digitalWrite(R_SIGN, R_linDir);          // assign left motor direction
   analogWrite(R_PWM, rightDutyCycle);   // send left motor PWM signal
 }
 
@@ -301,29 +330,51 @@ void velController(double leftDesiredVel, double rightDesiredVel, double leftAng
   double leftDutyCycle = ((abs(leftMotorVoltage) / batteryVoltage) * (double)255);
   double rightDutyCycle = ((abs(rightMotorVoltage) / batteryVoltage) * (double)255);
 
-  bool L_dir;
-  bool R_dir;
-
   /* check for wheel spin direction */
-  if(leftMotorVoltage < 0)    bool L_dir = 1;
-  else                        bool L_dir = 0;
+  if(leftMotorVoltage < 0){    
+    L_velDir = 1;
+  }
+  else{
+    L_velDir = 0;
+  }
 
-  if(rightMotorVoltage < 0)   bool R_dir = 1;
-  else                        bool R_dir = 0;
+  if(rightMotorVoltage < 0){
+    R_velDir = 1;
+  }
+  else{
+    R_velDir = 0;
+  }
 
-  digitalWrite(L_SIGN, L_dir);          // assign left motor direction
+  digitalWrite(L_SIGN, L_velDir);          // assign left motor direction
   analogWrite(L_PWM, leftDutyCycle);    // send left motor PWM signal
-  digitalWrite(R_SIGN, R_dir);          // assign left motor direction
+  digitalWrite(R_SIGN, R_velDir);          // assign left motor direction
   analogWrite(R_PWM, rightDutyCycle);   // send left motor PWM signal
   
 }
 
 void receiveData(int byteCount){
-  while(Wire.available()){
-    desiredXPos = Wire.read();    // receiving an int that needs to be converted to decimal
+
+  static int isrCalls = 0;
+
+  
+  
+  if (isrCalls == 0){
+    pauseRot = true;
+    isrCalls += 1;
   }
-  desiredCounts = (desiredXPos / (2 * PI*radius)) * N;
-  desireForwardAngPos = (double)desiredCounts * 2.0 * PI / (double)N;
+  
+
+  if(isrCalls == 1){
+    static int i = 0;
+    while(Wire.available()){      
+      isrData[i] = Wire.read();    // receiving an int that needs to be converted to decimal
+      i += 1;
+    /*} else if(isrCalls == 2){
+      phi_des = Wire.read();
+      isrCalls += 1;*/
+    }
+  }
+
 }
 
 /* control robot rotation velocity */
@@ -375,7 +426,7 @@ void printData() {
   //Serial.print("\t"); Serial.print(desireForwardAngPos);
   //Serial.print("\t"); Serial.print(x_now);
   Serial.print("\t"); Serial.print(desiredXPos);
-  Serial.print("\t"); Serial.print(phi_now);
+  Serial.print("\t"); Serial.print(phi_des);
   //Serial.print("\t"); Serial.print(rightrotError);
   //Serial.print("\t"); Serial.print(rotFlag);
   //Serial.print("\t"); Serial.print(R_angVel);

@@ -1,0 +1,90 @@
+# Michael Castellano and Josie Brahler
+# EENG 350
+# Demo 2
+# Detect marker in motion, tell arduino to stop moving and sends distance
+
+from picamera.array import PiRGBArray
+from picamera import PiCamera
+from time import sleep
+from PIL import Image
+from cv2 import aruco
+import time
+import numpy as np
+import argparse
+import cv2
+import PIL
+import math
+import serial
+import time
+import board
+import busio
+import smbus
+
+# Initialize
+bus = smbus.SMBus(1)
+
+# Gloval Variables
+global frame, corners, ids, rejectedImgPoints, frame_markers, angle, distance, fov, real_distance
+fov = .12 *1200*4.5 #3.05mm but in inches
+real_distance = 6.0 # 5.5 inch
+
+# Turn on video
+video = cv2.VideoCapture(0)
+
+# Function to write one byte of a string to the Arduino
+def writeArduino(value):
+    bus.write_byte(0x20, value) # Address of Arduino (slave) is 0x20
+    return -1
+
+# Function to calculate angle and distance of marker once seen
+def aruco_location():
+    global distance
+    global angle_deg
+    angle_deg = 30
+    image_distance = corners[0][0][1][0] - corners[0][0][0][0]
+    distance = (fov * real_distance / image_distance) # In inches
+    distance = distance - ( distance - 12 ) / 12
+    # Calculate center of marker based on four corners
+    x_cord = ((((corners[0][0][1][0] - corners[0][0][0][0])/2)
+               + ((corners[0][0][2][0] - corners[0][0][3][0])/2) ) / 2) + corners[0][0][0][0]
+    
+    x_cord = x_cord - 320 # Default pixel width is ~640
+    X = (x_cord*(real_distance / image_distance) / fov) * 20
+    
+    if (X < 1) and (X > -1):
+        # Measurers angle from [30,0] from left side to right side of view
+        angle = math.asin(X)
+        angle_deg = angle * 180 / 3.14
+           
+       
+while True:
+    # Get current frame and convert to grayscale. Print frame
+    check,frame = video.read()
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    cv2.imshow("Capturing", frame)
+    
+    # Checks for aruco marker
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
+    parameters = aruco.DetectorParameters_create()
+    corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters = parameters)
+    frame_markers = aruco.drawDetectedMarkers(frame, corners, ids)
+    
+    # Break code after marker is in center of field of view
+    if ids != None :
+        aruco_location()
+        if ((angle_deg < 1) and (angle_deg > -1)):
+            distance = distance - 7 # Don't run into the marker
+            print(distance)
+            writeArduino(int(distance))
+            break
+
+# Stop recoring if 'q' is pressed
+    key = cv2.waitKey(1)
+    if key == ord('q'):
+        break
+    
+# Send data, stop video and close all windows
+video.release()
+cv2.destroyAllWindows()
+
+

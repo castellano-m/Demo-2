@@ -1,4 +1,4 @@
-# Demo-2 - Master Branch
+# Demo-2: Master Branch
 Robot must perform two different tasks. Each task is assigned to a team member(s) based on their roles on the team (Raspberry Pi or Arduino).
 * **Task 1**: Robot must be able to move within 1 foot of the beacon and stop before hitting it.
 * **Task 2**: Robot must move within 1 foot of the beacon, and then must circle the beacon, moving no more than 2 feet away from the beacon at any time.

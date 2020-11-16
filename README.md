@@ -5,4 +5,4 @@ Robot must perform two different tasks. Each task is assigned to a team member(s
 
 A short description of files in this master branch are as followed:
 * **CLControlDemo2v1.ino**: Receives data from the Raspberry Pi over I2C communication, and utilizes a state machine (swtich statement) to implement the different stages of both Task 1 and Task 2. 
-* **Demo 2_Python**: description
+* **Demo_2_Python**: Captures any Aruco Marker and calculates the approximate angle and distance from the center of the camera. Once the angle is about 0 degrees, sends a signal to the robot to stop rotating and move forward 1 foot less than the distance calculated.

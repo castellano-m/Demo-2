@@ -5,4 +5,4 @@ Robot must perform two different tasks. Each task is assigned to a team member(s
 
 A short description of files in this master branch are as followed:
 * **CLControlDemo2v1.ino**: Receives data from the Raspberry Pi over I2C communication, and utilizes a state machine (swtich statement) to implement the different stages of both Task 1 and Task 2. 
-* **FILENAME**: description
+* **Demo 2_Python**: description
